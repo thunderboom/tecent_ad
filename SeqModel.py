@@ -6,7 +6,8 @@ import torch.nn.functional as F
 
 
 def compute_loss(outputs, labels):
-    loss = F.cross_entropy(outputs, labels)
+    criterion = nn.BCELoss()
+    loss = criterion(outputs.float(), labels.float())
     return loss
 
 
@@ -16,11 +17,11 @@ class TextRNN(nn.Module):
     def __init__(self, config, embedding_matrix):
         super(TextRNN, self).__init__()
         # 三个待输入的数据
-        self.embedding = nn.Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1])
-        self.embedding.weight.data.copy_(torch.from_numpy(embedding_matrix))
-        self.embedding.weight.requires_grad = config.require_grad
+        self.embedding = nn.Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1])  #定义词向量
+        self.embedding.weight.data.copy_(torch.from_numpy(embedding_matrix))                 #获取权重
+        self.embedding.weight.requires_grad = config.require_grad                            #对词向量是否更新
         self.rnn = nn.LSTM(input_size=100, hidden_size=128, num_layers=2, bidirectional=True)
-        #self.rnn = nn.GRU(input_size=64, hidden_size=128, num_layers=2, bidirectional=True)
+        #self.rnn = nn.GRU(input_size=100, hidden_size=128, num_layers=2, bidirectional=True)
         self.f1 = nn.Sequential(nn.Linear(256, 128),
                                 nn.Dropout(0.2),
                                 nn.ReLU())
@@ -31,8 +32,10 @@ class TextRNN(nn.Module):
         x = self.embedding(x)
         x, _ = self.rnn(x)
         x = self.f1(x[:, -1, :])
+        x = self.f2(x)
+        gender = gender.unsqueeze(1)
         loss = compute_loss(x, gender)
-        return self.f2(x), loss
+        return x, loss
 
 
 class TextCNN(nn.Module):
@@ -55,3 +58,12 @@ class TextCNN(nn.Module):
         x = x.view(-1, 256 * 596)
         x = self.f1(x)
         return self.f2(x)
+
+# #test
+#
+# if __name__ == "__main__":
+#     x = torch.randint(0, 50, (30, 50))
+#     label = torch.randint(0, 2, (30,1))
+#     model = TextRNN(None, None)
+#     prob, loss = model(x, None, label)
+#     print(prob)

@@ -4,6 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 import json
 import copy
+import os
 
 class Data_example():  #定义输入例子
     def __init__(self, user_id=None, creative_id=None, product_id=None, age=1, gender=1):
@@ -69,7 +70,7 @@ class FeatureGeneration():
     def load_word_dict(self, data_type):
         word_list = []
         path = self.embedding_path_dict[data_type]
-        with open(path, 'r', encoding='utf-8') as fr:  # 定义矩阵
+        with open(path, 'r', encoding='utf-8') as fr:
             for idx, line in enumerate(fr.readlines()):
                 if idx != 0:
                     line = line.split()
@@ -119,7 +120,7 @@ class FeatureGeneration():
 
 
 
-class AdvData(Dataset):
+class AdvData(Dataset):          #构造
     def __init__(self, data, config):
         self.data = data
 
@@ -134,11 +135,23 @@ class AdvData(Dataset):
         return len(self.data)
 
 
-def result_save(examples):
+def result_save(config, examples, genders=None, ages=None):   #存储测试集预测结果
     user_ids = []
     for example in examples:
-        user_ids.append(example.user_ids)
-    return
+        user_ids.append(example.user_id)
+    if genders != None and ages!=None:
+        df = pd.DataFrame({'user_id':user_ids, 'gender':genders, 'age':ages})
+    elif genders != None:
+        df = pd.DataFrame({'user_id': user_ids, 'gender': genders})
+    elif ages != None:
+        df = pd.DataFrame({'user_id': user_ids, 'gender': genders})
+    else:
+        raise ValueError("no result output, please check")
+    if not os.path.exists(config.result_path):
+        os.makedirs(config.result_path)
+    path = os.path.join(config.result_path, 'result.csv')
+    df.to_csv(path, index=False)
+    return None
 
 
 

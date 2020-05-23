@@ -7,13 +7,14 @@ import torch
 from sklearn import metrics
 import time
 from transformers import AdamW, get_linear_schedule_with_warmup
-
+from torch.optim import Adam
 logger = logging.getLogger(__name__)
 
 
 def model_train(config, model, train_iter, dev_iter=None):
+    '''训练模型'''
     start_time = time.time()
-    optimizer = AdamW(model.parameters())
+    optimizer = AdamW(model.parameters(), lr=config.learning_rate)
     t_total = len(train_iter) * config.num_train_epochs
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=t_total * config.warmup_proportion, num_training_steps=t_total
@@ -55,7 +56,7 @@ def model_train(config, model, train_iter, dev_iter=None):
             labels_all.extend(labels)
             predict_all.extend(predic)
 
-            if global_batch % 100 == 0:
+            if global_batch % 10 == 0:
 
                 train_acc = metrics.accuracy_score(labels_all, predict_all)
                 predict_all = []
@@ -65,7 +66,7 @@ def model_train(config, model, train_iter, dev_iter=None):
                 dev_acc, dev_loss = train_acc, loss
                 improve = ''
                 if dev_iter is not None:
-                    dev_acc, dev_loss  = model_evaluate(config, model, dev_iter)
+                    dev_acc, dev_loss = model_evaluate(config, model, dev_iter)
 
                     if dev_acc > dev_best_acc:
                         dev_best_acc = dev_acc
@@ -77,7 +78,7 @@ def model_train(config, model, train_iter, dev_iter=None):
 
                 time_dif = time.time() - start_time
                 msg = 'Iter: {0:>6},  Train Loss: {1:>5.6f},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.6f},  Val Acc: {4:>6.2%},  Time: {5} {6}'
-                print(msg.format(global_batch, loss.cpu().data.item(), train_acc, dev_loss.cpu().data.item(), dev_acc, time_dif, improve))
+                logging.info(msg.format(global_batch, loss.cpu().data.item(), train_acc, dev_loss.cpu().data.item(), dev_acc, time_dif, improve))
             if config.early_stop and global_batch - last_improve > config.require_improvement:
                 # 验证集loss超过1000batch没下降，结束训练
                 logger.info("No optimization for a long time, auto-stopping...")
@@ -108,7 +109,9 @@ def model_evaluate(config, model, val_iter, test=False):
             predict_prob.extend(outputs)
             if not test:
                 loss_total += loss
-    if test:
+    predict_all = [label[0] for label in predict_all]
+    predict_prob = [label[0] for label in predict_prob]
+    if test == True:
         if config.out_prob:
             return predict_prob
         return predict_all
@@ -135,13 +138,10 @@ def model_evaluate(config, model, val_iter, test=False):
 #     logger.info("Time usage:%.6fs", time_dif)
 
 
-def model_save(config, model, name=None):
-    if not os.path.exists(config.save_path):
-        os.makedirs(config.save_path)
-    if name is not None:
-        file_name = os.path.join(config.save_path, name + '.pkl')
-    else:
-        file_name = os.path.join(config.save_path, config.models_name+'.pkl')
+def model_save(config, model):
+    if not os.path.exists(config.model_saved_path):
+        os.makedirs(config.model_saved_path)
+    file_name = os.path.join(config.model_saved_path, config.data_type+'.pkl')
     torch.save(model.state_dict(), file_name)
     logger.info("model saved, path: %s", file_name)
 
