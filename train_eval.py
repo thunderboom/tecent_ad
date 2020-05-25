@@ -8,13 +8,15 @@ from sklearn import metrics
 import time
 from transformers import AdamW, get_linear_schedule_with_warmup
 from torch.optim import Adam
+import torch.nn as nn
 logger = logging.getLogger(__name__)
 
 
 def model_train(config, model, train_iter, dev_iter=None):
     '''训练模型'''
     start_time = time.time()
-    optimizer = AdamW(model.parameters(), lr=config.learning_rate)
+    model = model.to(config.device)
+    optimizer = Adam(model.parameters(), lr=config.learning_rate)
     t_total = len(train_iter) * config.num_train_epochs
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=t_total * config.warmup_proportion, num_training_steps=t_total
@@ -36,7 +38,6 @@ def model_train(config, model, train_iter, dev_iter=None):
     predict_all = []
     labels_all = []
     best_model = copy.deepcopy(model)
-
     for epoch in range(config.num_train_epochs):
         logger.info('Epoch [{}/{}]'.format(epoch + 1, config.num_train_epochs))
         # scheduler.step() # 学习率衰减
@@ -49,9 +50,10 @@ def model_train(config, model, train_iter, dev_iter=None):
             outputs, loss = model(creative_id, age, gender)
             model.zero_grad()
             loss.backward()
+            #nn.utils.clip_grad_norm_(model.parameters(), max_norm=1, norm_type=2)
             optimizer.step()
             scheduler.step()  # Update learning rate schedule
-            labels = list(gender)
+            labels = list(np.array(gender.cpu().detach().numpy(), dtype='int'))
             predic = list(np.array(outputs.cpu().detach().numpy() >= 0.50, dtype='int'))
             labels_all.extend(labels)
             predict_all.extend(predic)
@@ -109,8 +111,8 @@ def model_evaluate(config, model, val_iter, test=False):
             predict_prob.extend(outputs)
             if not test:
                 loss_total += loss
-    predict_all = [label[0] for label in predict_all]
-    predict_prob = [label[0] for label in predict_prob]
+    # predict_all = [label[0] for label in predict_all]
+    # predict_prob = [label[0] for label in predict_prob]
     if test == True:
         if config.out_prob:
             return predict_prob

@@ -19,26 +19,26 @@ class Config:
         self.logging_file = 'logging/' + self.model_type + '/' + self.data_type + '/'
         #模型
         self.hidden_size = 128
-        self.max_length = 16
+        self.max_length = 90                                                               #很敏感！！！！！！！！！
         #训练
         self.seed = 520
-        self.learning_rate = 1e-2
-        self.batch_size = 128
+        self.learning_rate = 1e-3
+        self.batch_size = 64
         self.val_size = 0.2                                                                #验证集占比
         self.train_numples = 900000
-        self.num_train_epochs = 5                                                        #训练轮数
+        self.num_train_epochs = 5                                                          #训练轮数
         self.pattern = 'cross_validation'
-        self.require_grad = True                                                          #训练过程是否更新词向量
+        self.require_grad = True                                                           #训练过程是否更新词向量
         self.early_stop = False                                                            #验证集正确率不上升，就停止训练
         self.require_improvement = 1000
         self.warmup_proportion = 0.1                                                       #warmup轮数占比
         #设备
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.device_id = 0
+        self.device_id = 0                                                                 #
         #输出
-        self.out_prob = False                                                               #输出是否为概率
-        self.test = True                                                                    #输出测试集预测
-        self.model_saved = True                                                             #是否保存模型
+        self.out_prob = False                                                              #输出是否为概率
+        self.test = True                                                                   #输出测试集预测
+        self.model_saved = True                                                            #是否保存模型
         self.logging2file = True
 
 def random_seed(seed):
