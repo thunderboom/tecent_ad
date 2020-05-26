@@ -16,7 +16,7 @@ def model_train(config, model, train_iter, dev_iter=None):
     '''训练模型'''
     start_time = time.time()
     model = model.to(config.device)
-    optimizer = Adam(model.parameters(), lr=config.learning_rate)
+    optimizer = AdamW(model.parameters(), lr=config.learning_rate, weight_decay=1e-5)
     t_total = len(train_iter) * config.num_train_epochs
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=t_total * config.warmup_proportion, num_training_steps=t_total
@@ -50,7 +50,7 @@ def model_train(config, model, train_iter, dev_iter=None):
             outputs, loss = model(creative_id, age, gender)
             model.zero_grad()
             loss.backward()
-            #nn.utils.clip_grad_norm_(model.parameters(), max_norm=1, norm_type=2)
+            nn.utils.clip_grad_norm_(model.parameters(), max_norm=20, norm_type=2)
             optimizer.step()
             scheduler.step()  # Update learning rate schedule
             labels = list(np.array(gender.cpu().detach().numpy(), dtype='int'))
@@ -58,7 +58,7 @@ def model_train(config, model, train_iter, dev_iter=None):
             labels_all.extend(labels)
             predict_all.extend(predic)
 
-            if global_batch % 10 == 0:
+            if global_batch % 100 == 0:
 
                 train_acc = metrics.accuracy_score(labels_all, predict_all)
                 predict_all = []

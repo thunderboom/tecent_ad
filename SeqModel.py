@@ -20,18 +20,27 @@ class TextRNN(nn.Module):
         self.embedding = nn.Embedding(embedding_matrix.shape[0], embedding_matrix.shape[1])  #定义词向量
         self.embedding.weight.data.copy_(torch.from_numpy(embedding_matrix))                 #获取权重
         self.embedding.weight.requires_grad = config.require_grad                            #对词向量是否更新
-        #self.rnn = nn.LSTM(input_size=100, hidden_size=128, num_layers=2, bidirectional=True)
-        self.rnn = nn.GRU(input_size=100, hidden_size=128, num_layers=2, bidirectional=True)
-        self.f1 = nn.Sequential(nn.Linear(256, 128),
+        self.rnn = nn.LSTM(input_size=128, hidden_size=128, num_layers=2, bidirectional=True)
+        #self.rnn = nn.GRU(input_size=128, hidden_size=256, num_layers=2, bidirectional=True)
+        self.maxPooling = nn.MaxPool1d(config.max_length)
+        self.avgPooling = nn.AvgPool1d(config.max_length)
+        self.f1 = nn.Sequential(nn.Linear(256*3, 256*3),
                                 nn.Dropout(0.2),
                                 nn.ReLU())
-        self.f2 = nn.Sequential(nn.Linear(128, 1),
+        self.f2 = nn.Sequential(nn.Linear(256*3, 1),
                                 nn.Sigmoid())
 
     def forward(self, x, age, gender):
-        x = self.embedding(x)
+        x = self.embedding(x)     #bs, length, embedding_size
         x, _ = self.rnn(x)
-        x = self.f1(x[:, 0, :])
+        x_sum = torch.sum(x, dim=1)
+        x = x.permute(0, 2, 1)
+        x_max = self.maxPooling(x)
+        x_min = self.avgPooling(x)
+        x_max = x_max.squeeze()
+        x_min = x_min.squeeze()
+        x = torch.cat((x_max, x_min, x_sum), dim=1)
+        x = self.f1(x)
         x = self.f2(x)
         x = x.squeeze(dim=-1)
         loss = compute_loss(x, gender)
